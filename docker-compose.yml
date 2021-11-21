@@ -1,0 +1,14 @@
+version: "3.9"
+services:
+  backend:
+    image: backend
+    ports:
+      - "9000:9000"
+    environment:
+      - APPID=${APPID}
+  frontend:
+    image: frontend
+    environment:
+      - ENDPOINT=${ENDPOINT}
+    ports:
+      - "8000:8000"

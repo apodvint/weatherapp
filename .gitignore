@@ -1,8 +1,15 @@
+.idea
+
 # OSX
 .DS_Store
 
 # Node
 node_modules
+
+# Terraform
+terraform/.terraform*
+terraform/*.tfstate
+terraform/myKey.pem
 
 # Logs
 *.log

@@ -1,91 +1,131 @@
 # Weatherapp
-
-There was a beautiful idea of building an app that would show the upcoming weather. The developers wrote a nice backend and a frontend following the latest principles and - to be honest - bells and whistles. However, the developers did not remember to add any information about the infrastructure or even setup instructions in the source code.
-
-Luckily we now have [docker compose](https://docs.docker.com/compose/) saving us from installing the tools on our computer, and making sure the app looks (and is) the same in development and in production. All we need is someone to add the few missing files!
-
 ## Prerequisites
 
 * An [openweathermap](http://openweathermap.org/) API key.
+* [AWS](https://aws.amazon.com/free/) account, configured profile.
+* Installed:
+  * AWS CLI
+  * docker
+  * terraform
+  * ansible
+  * Node.js + NPM (if you want to run the app without docker)
 
-## Returning your solution
+## Configuration
+The application is configured via environment variables.
 
-### Via github
+Backed:
+- APPID - API key for weather data
 
-* Make a copy of this repository in your own github account (do not fork unless you really want to be public).
-* Create a personal repository in github.
-* Make changes, commit them, and push them in your own repository.
-* Send us the url where to find the code.
+Frontend:
+- ENDPOINT - base URL for the Backend app (e.g. `http://mydomain.com/api`)
 
-### Via tar-package
+## Running locally
+### Without docker
+You can run the app locally using `npm i && npm start` in both frontend and backend folders.
+Don't forget to provide APPID env var.
 
-* Clone this repository.
-* Make changes and **commit them**.
-* Create a **.tgz** -package including the **.git**-directory, but excluding the **node_modules**-directories.
-* Send us the archive.
+### With Docker
+**Dockerfile**s are located in the *frontend* and the *backend* directories to run them virtually on any environment having [docker](https://www.docker.com/) installed. 
 
-## Exercises
+* Go to *weatherapp* directory.
+* Run `docker build -f backend/Dockerfile . -t backend` to build the backend image.
+* Run the container by saying `docker run --rm -e APPID=<API_KEY> -p 9000:9000 --name backend -t backend`
+* Run `docker build -f frontend/Dockerfile . -t frontend` to build the frontend image.
+* Run the container by saying `docker run --rm -e ENDPOINT=http://0.0.0.0:9000/api -p 8000:8000 --name frontend -t frontend` (
+  edit the ENDPOINT variable if you're running the backend on another address)
 
-Here are some things in different categories that you can do to make the app better. Before starting you need to get yourself an API key to make queries in the [openweathermap](http://openweathermap.org/). You can run the app locally using `npm i && npm start`.
+Now you have frontend and backend running locally (on 8000 and 9000 ports by default).
 
-### Docker
+#### Docker Compose
+These two images can be run in one action using **docker-compose.yml** file connecting images for the frontend and the backend. 
 
-*Docker containers are central to any modern development initiative. By knowing how to set up your application into containers and make them interact with each other, you have learned a highly useful skill.*
+Command is `docker-compose up`.
 
-* Add **Dockerfile**'s in the *frontend* and the *backend* directories to run them virtually on any environment having [docker](https://www.docker.com/) installed. It should work by saying e.g. `docker build -t weatherapp_backend . && docker run --rm -i -p 9000:9000 --name weatherapp_backend -t weatherapp_backend`. If it doesn't, remember to check your api key first.
+Remember to have required environment variable defined. For example:
+```
+APPID=<API_KEY> ENDPOINT=http://0.0.0.0:9000/api docker-compose up
+```
 
-* Add a **docker-compose.yml** -file connecting the frontend and the backend, enabling running the app in a connected set of containers.
+## Running in Cloud (AWS)
+_Note:_ remember to have AWS account configured on your machine.
 
-* The developers are still keen to run the app and its pipeline on their own computers. Share the development files for the container by using volumes, and make sure the containers are started with a command enabling hot reload.
+### Terraform
+I decided to go with EC2 instance. It can be created with [terraform](https://www.terraform.io/) scripts.
+* Go to `terraform/` folder
+* Run `terraform init`
+* Run `terraform apply`
+* Follow the CLI instructions
 
-### Node and React development
+You should have an EC2 instance now. 
+Also, a key file `terraform/myKey.pem` should be created, you will need it later.
 
-*Node and React applications are highly popular technologies. Understanding them will give you an advantage in front- and back-end development projects.*
+### AWS
+Now you have your EC2 instance running. You can check it in AWS console or using AWS CLI. 
 
-* The application now only reports the current weather. It should probably report the forecast e.g. a few hours from now. (tip: [openweathermap api](https://openweathermap.org/forecast5))
+#### ECR
+You have to create an ECR repository manually (_can probably be automated_), docker images can be pushed there.
 
-* There are [eslint](http://eslint.org/) errors. Sloppy coding it seems. Please help.
+* Go to Amazon ECR > Repositories > Create repository
+* Create a private repository called `eficode`
 
-* The app currently reports the weather only for location defined in the *backend*. Shouldn't it check the browser location and use that as the reference for making a forecast? (tip: [geolocation](https://developer.mozilla.org/en-US/docs/Web/API/Geolocation/Using_geolocation))
+The push commands can be seen in AWS (`View push commands` button) after creating your repository for the images.
 
-### Testing
+For example:
+```
+docker tag backend:latest <YOUR_REGISTRY_URI>/eficode:backend
+docker push <YOUR_REGISTRY_URI>/eficode:backend
+```
 
-*Test automation is key in developing good quality applications. Finding bugs in early stages of development is valuable in any software development project. With Robot Framework you can create integration tests that also serve as feature descriptions, making them exceptionally useful.*
-
-* Create automated tests for the application. (tip: [mocha](https://mochajs.org/))
-
-* Create [Robot Framework](http://robotframework.org/) integration tests. Hint: Start by creating a third container that gives expected weather data and direct the backend queries there by redefining the **MAP_ENDPOINT**.
-
-### Cloud
-
-*The biggest trend of recent times is developing, deploying and hosting your applications in cloud. Knowing cloud -related technologies is essential for modern IT specialists.*
-
-* Set up the weather service in a free cloud hosting service, e.g. [AWS](https://aws.amazon.com/free/) or [Google Cloud](https://cloud.google.com/free/).
+Final result should look like this:
+![img.png](img.png)
 
 ### Ansible
 
-*Automating deployment processes saves a lot of valuable time and reduces chances of costly errors. Infrastructure as Code removes manual steps and allows people to concentrate on core activities.*
+Using [ansible](https://docs.ansible.com/ansible/latest/index.html) playbook we can install docker, docker-compose and the app itself in the EC2.
 
-* Write [ansible](http://docs.ansible.com/ansible/intro.html) playbooks for installing [docker](https://www.docker.com/) and the app itself.
+Note, that the playbook is going to use `aws ecr get-login-password --region eu-central-1` to get an ECR authorization token. 
 
-### Documentation
+#### Change the key permission
+**Warning**: I didn't have time to automate this, so this part has to be done manually:
+* In `terraform/` folder run `chmod 400 myKey.pem`
 
-*Good documentation benefits everyone.*
+#### Ansible config
+You should have a `~/.ansible.cfg` file to make it possible to connect to EC2 instance.
+Example:
+```
+[defaults]
+host_key_checking = False
+private_key_file=<PATH_TO_WEATHERAPP>/terraform/myKey.pem
+inventory=/etc/ansible/hosts
+remote_user = ubuntu
 
-* Remember to update the README
+[ssh_connection]
+control_path=%(directory)s/%%h-%%r
+control_path_dir=~/.ansible/cp
+scp_if_ssh = True
+```
 
-* Use descriptive names and add comments in the code when necessary
+Use the key file created in the terraform step as `private_key_file`.
 
-### ProTips
+Next, you should have a `/etc/ansible/hosts` file with EC2 public DNS and key.
+Example:
+```
+[ec2]
 
-* When you are coding the application imagine that you are a freelancer developer developing an application for an important customer.
+<YOUR_EC2_PUBLIC_DNS>.amazonaws.com ansible_ssh_private_key_file=<PATH_TO_WEATHERAPP>/terraform/myKey.pem
+```
 
-* The app must be ready to deploy and work flawlessly.
+#### Running ansible playbook
+**Warning**: I didn't have time to automate this, so this part has to be done manually:
+* Edit `ansible/files/docker-compose-remote.yml`, replace images for backend and frontend with your ECR registry URI
+* Edit `ansible/playbook.yaml`, `Pull app images` and `Login to ECR` steps: also use your ECR registry URI to pull images
 
-* The app must be easy to deploy to your local machine with and without Docker. 
+Then
+* Go to project's root
+* To run the app on the remote host, execute:
+```
+ansible-playbook ansible/playbook.yaml --extra-vars "appid=<YOUR_API_KEY> endpoint=http://<EC2_PUBLIC_DNS>.amazonaws.com:9000/api"
+```
 
-* Detailed instructions to run the app should be included in your forked version because a customer would expect detailed instructions also.
-
-* Structure the code and project folder structure in a modular and logical fashion for extra points.
-
-* Try to avoid any bugs or weirdness in the operating logic.
+Now you can check the running app by opening `http://<EC2_PUBLIC_DNS>.amazonaws.com:8000` in your browser. It might look like this:
+![img_1.png](img_1.png)

@@ -1,0 +1,72 @@
+---
+- hosts: localhost
+  tasks:
+    - name: Get AWS ECR token
+      shell: "aws ecr get-login-password --region eu-central-1"
+      register: token
+- hosts: ec2
+  become: yes
+  vars_files:
+    - vars/default.yaml
+
+  tasks:
+    - name: Install aptitude using apt
+      apt:
+        name: aptitude
+        state: latest
+        update_cache: yes
+        force_apt_get: yes
+
+    - name: Install required system packages for Docker
+      apt:
+        name: "{{ docker_required_packages }}"
+        state: latest
+        update_cache: yes
+
+    - name: Add Docker GPG key
+      apt_key:
+        url: "{{ docker_gpg_url }}"
+        state: present
+
+    - name: Add Docker repository
+      apt_repository:
+        repo: "{{ docker_repo }}"
+        state: present
+
+    - name: Install Docker
+      apt:
+        name: "{{ docker_packges }}"
+        state: latest
+        update_cache: yes
+
+    - name: Install Python Docker module
+      pip:
+        name: docker
+
+    - name: Install Docker Compose
+      pip:
+        name: docker-compose
+
+    - name: Install AWS CLI
+      apt:
+        name: awscli
+        state: latest
+
+    - name: Change docker daemon socket permission
+      command: "sudo chmod 666 /var/run/docker.sock"
+
+    - name: Login to ECR
+      command: "docker login -u AWS -p {{hostvars['localhost']['token'].stdout}} 488940122412.dkr.ecr.eu-central-1.amazonaws.com"
+
+    - name: Pull app images
+      shell: |
+        docker pull 488940122412.dkr.ecr.eu-central-1.amazonaws.com/eficode:frontend
+        docker pull 488940122412.dkr.ecr.eu-central-1.amazonaws.com/eficode:backend
+
+    - name: Copy local file to EC2
+      copy:
+        src: ./docker-compose-remote.yml
+        dest: /etc/docker-compose.yml
+
+    - name: Run docker-compose
+      shell: "APPID={{appid}} ENDPOINT={{endpoint}} docker-compose -f /etc/docker-compose.yml up --detach"
