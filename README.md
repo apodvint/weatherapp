@@ -118,13 +118,12 @@ Example:
 #### Running ansible playbook
 **Warning**: I didn't have time to automate this, so this part has to be done manually:
 * Edit `ansible/files/docker-compose-remote.yml`, replace images for backend and frontend with your ECR registry URI
-* Edit `ansible/playbook.yaml`, `Pull app images` and `Login to ECR` steps: also use your ECR registry URI to pull images
 
 Then
 * Go to project's root
 * To run the app on the remote host, execute:
 ```
-ansible-playbook ansible/playbook.yaml --extra-vars "appid=<YOUR_API_KEY> endpoint=http://<EC2_PUBLIC_DNS>.amazonaws.com:9000/api"
+ansible-playbook ansible/playbook.yaml --extra-vars "appid=<YOUR_API_KEY> endpoint=http://<EC2_PUBLIC_DNS>.amazonaws.com:9000/api ecr=<YOUR_ECR_URI>"
 ```
 
 Now you can check the running app by opening `http://<EC2_PUBLIC_DNS>.amazonaws.com:8000` in your browser. It might look like this:

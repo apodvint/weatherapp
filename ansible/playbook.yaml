@@ -56,12 +56,12 @@
       command: "sudo chmod 666 /var/run/docker.sock"
 
     - name: Login to ECR
-      command: "docker login -u AWS -p {{hostvars['localhost']['token'].stdout}} 488940122412.dkr.ecr.eu-central-1.amazonaws.com"
+      command: "docker login -u AWS -p {{hostvars['localhost']['token'].stdout}} {{ecr}}"
 
     - name: Pull app images
       shell: |
-        docker pull 488940122412.dkr.ecr.eu-central-1.amazonaws.com/eficode:frontend
-        docker pull 488940122412.dkr.ecr.eu-central-1.amazonaws.com/eficode:backend
+        docker pull {{ecr}}/eficode:frontend
+        docker pull {{ecr}}/eficode:backend
 
     - name: Copy local file to EC2
       copy:
